@@ -1,209 +1,219 @@
-# FinSafe ML Service
+# SpendSight (FinSafe) — Full Stack Transaction Insights
 
-Intelligent transaction analysis engine for FinSafe. Accepts raw bank transactions and returns categorization, anomaly detection, fraud signals, spending forecasts, and a financial health score.
+SpendSight (aka **FinSafe**) is a 3-part system that turns raw bank transactions (uploaded as a CSV) into:
+- **Categorization** (merchant/description → category)
+- **Anomaly / flagged spend detection**
+- **Weekly actuals + 4-week forecast**
+- **High-level “financial health” score**
+
+The architecture is intentionally simple for a demo/hack-style environment: **in-memory job queue**, **CSV upload**, and a separate **ML inference service** the backend calls.
+
+---
+
+## Repo Layout
+
+```
+frontend/finsafe/   # React + Vite UI (CSV upload + dashboard)
+backend/            # Node/Express API (upload endpoint + job queue + ML integration)
+ml/                 # FastAPI ML service (/predict, /health)
+docs/               # Project docs/notes (if any)
+```
 
 ---
 
 ## Tech Stack
 
-- **Python 3.10+**
-- **FastAPI** — REST API
-- **scikit-learn** — TF-IDF categorizer + IsolationForest anomaly detection
-- **pandas / numpy** — data processing
-- **Hugging Face datasets** — primary training data source
+- **Frontend**: React + TypeScript + Vite (+ Tailwind + Recharts)
+- **Backend**: Node.js (>= 20) + Express, `multer` upload, `csv-parser`, `axios`
+- **ML service**: Python + FastAPI + pandas/numpy + scikit-learn
 
 ---
 
-## Project Structure
+## Quickstart (Run Everything Locally)
 
-```
-ml/
-├── app.py                  # FastAPI entry point, /predict endpoint
-├── models/
-│   ├── categorizer.py      # Transaction categorizer (TF-IDF + Logistic Regression)
-│   ├── anomaly.py          # Anomaly detection (IsolationForest)
-│   ├── merchant_risk.py    # Fraud signal + merchant risk tier
-│   ├── velocity_burst.py   # 3-day spending burst detection
-│   ├── category_drift.py   # Month-over-month category drift alerts
-│   └── forecast.py         # 4-week spend forecast (Linear Regression)
-└── utils/
-    ├── data_loader.py      # Training data — Hugging Face + fallback keywords
-    └── health_score.py     # 0–100 financial health score
-```
+You’ll run **three processes** in three terminals.
 
----
-
-## Setup
+### 1) Start the ML service (FastAPI)
 
 ```bash
 cd ml
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Service runs on `http://localhost:8000` by default.
+- ML health check: `GET http://localhost:8000/health`
 
----
+### 2) Start the backend (Express API)
 
-## Endpoints
-
-### `GET /health`
-Returns service status and number of training rows loaded.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "training_rows": 21400
-}
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run dev
 ```
 
----
+- Backend health check: `GET http://localhost:<PORT>/api/health`
 
-### `POST /predict`
-Accepts a list of raw transactions and returns full analysis.
+**Important**: The backend `PORT` defaults to **3000** if not set, and the ML service should be set to **8000**.
 
-**Request body** (sent by Node.js backend):
-```json
-{
-  "transactions": [
-    {
-      "date": "2025-12-01T08:15:00.000Z",
-      "description": "Walmart groceries",
-      "amount": -93.10
-    }
-  ]
-}
-```
-
-> `amount` can be negative (debit) or positive (credit) — the service takes `abs()` internally.
-
-**Response:**
-```json
-{
-  "health_score": 66,
-  "total_transactions": 66,
-  "anomalies_count": 4,
-  "burst_count": 2,
-  "category_summary": [
-    {
-      "category": "Food & Dining",
-      "total": 457.23,
-      "avg_confidence": 96.9
-    }
-  ],
-  "drift_alerts": [
-    {
-      "category": "Financial Services",
-      "current_pct": 25.4,
-      "usual_pct": 7.4,
-      "delta_pct": 17.9,
-      "message": "Financial Services jumped to 25% of your budget this month vs your usual 7%"
-    }
-  ],
-  "forecast": [
-    { "week": "Week +1", "forecast": 3132.06 },
-    { "week": "Week +2", "forecast": 2592.88 },
-    { "week": "Week +3", "forecast": 2053.70 },
-    { "week": "Week +4", "forecast": 1514.52 }
-  ],
-  "transactions": [
-    {
-      "date": "2025-12-01 08:15",
-      "description": "Walmart groceries",
-      "amount": 93.10,
-      "category": "Food & Dining",
-      "category_confidence": 94.3,
-      "anomaly": false,
-      "anomaly_reason": "",
-      "anomaly_score": -0.43,
-      "fraud_signal": "",
-      "merchant_risk": "Familiar",
-      "velocity_burst": false,
-      "velocity_burst_msg": ""
-    }
-  ]
-}
-```
-
----
-
-## Categories
-
-| Category | Examples |
-|---|---|
-| Food & Dining | Subway, Grubhub, Doordash, Walmart groceries |
-| Transportation | Uber, Lyft, Shell gas, Metro card |
-| Shopping & Retail | Amazon, Target, Best Buy, Nike |
-| Utilities & Services | Verizon, Comcast, Dropbox, Microsoft 365 |
-| Rent & Mortgage | Rent payment, Monthly rent, Mortgage |
-| Entertainment & Recreation | Netflix, Spotify, Planet Fitness, AMC |
-| Healthcare & Medical | CVS, Dental clinic, Urgent care |
-| Financial Services | Venmo, Zelle, PayPal, Wire transfers |
-| Income | Paycheck, Cashback reward, Refund credit |
-| Gambling | DraftKings, Offshore casino, Betting |
-| Charity & Donations | Red Cross, GoFundMe, Patreon |
-| Government & Legal | IRS payment, DMV fee, Parking ticket |
-
----
-
-## Anomaly Flags
-
-Each transaction gets an `anomaly_score` from IsolationForest (lower = more anomalous). A transaction is flagged when:
-
-- Amount is **2x+ the category average**
-- Transaction occurs **outside normal hours** (2+ std deviations from mean hour)
-- **Daily transaction count** is 2x the daily average
-
-`Income` and `Rent & Mortgage` categories are excluded from anomaly detection to prevent false positives on paychecks and rent.
-
----
-
-## Fraud Signals
-
-High-risk keywords that trigger `fraud_signal`:
-
-- `unknown wire`, `offshore`, `international wire`
-- `casino`, `gambling`, `betting`
-- `crypto exchange`, `bitcoin atm`, `western union`
-
-Late-night charges (midnight–5 AM) above $200 are also flagged regardless of keyword.
-
----
-
-## Training Data
-
-On startup, `data_loader.py` loads training data in this order:
-
-1. **Hugging Face** — `mitulshah/transaction-categorization` (20,000 rows)
-2. **Fallback keyword templates** — always appended on top of HuggingFace data
-
-If HuggingFace is unavailable, only fallback templates are used (~1,200 rows).
-
----
-
-## Node.js Integration
-
-The Node.js backend (port 8080) calls this service via:
-
-```
-POST ${ML_SERVICE_URL}/predict
-```
-
-Set `ML_SERVICE_URL` in the Node.js `.env`:
+Recommended `.env` values (edit `backend/.env` after copying):
 
 ```env
+PORT=8080
 ML_SERVICE_URL=http://localhost:8000
+ML_SERVICE_TIMEOUT_MS=10000
+CORS_ORIGIN=*
+API_RATE_LIMIT_WINDOW_MS=900000
+API_RATE_LIMIT_MAX=100
+JOB_QUEUE_CONCURRENCY=1
+NODE_ENV=development
 ```
 
-The Node.js backend maps the response fields `categorizedTransactions`, `flaggedTransactions`, and `forecast` from the ML response. The ML service returns these under `transactions`, `transactions` (filtered where `anomaly: true`), and `forecast` respectively.
+### 3) Start the frontend (Vite)
+
+```bash
+cd frontend/finsafe
+npm install
+npm run dev
+```
+
+Set the API base URL for local backend development using a Vite env var:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+Notes:
+- The frontend code falls back to a hosted backend URL if `VITE_API_BASE_URL` is not set.
+- Don’t commit `frontend/finsafe/.env` (it’s typically local-only).
 
 ---
 
-## Notes
+## How It Works (High Level)
 
-- Model is trained fresh on every cold start (~5–10 seconds).
-- All data is processed in-memory — no database required.
-- To productionize: serialize the trained pipeline with `joblib` and load from disk to eliminate cold start.
+1. **Frontend** uploads a CSV to `POST /api/jobs/upload`
+2. **Backend** enqueues a job, parses the CSV into normalized transactions
+3. **Backend** calls ML: `POST ${ML_SERVICE_URL}/predict`
+4. **Frontend** polls `GET /api/jobs/:jobId` until status is `completed`
+5. **Dashboard** renders category totals, flagged/anomalous transactions, weekly spend, forecast, and health score
+
+---
+
+## Frontend (React) Details
+
+- **Upload**: sends `multipart/form-data` with field name **`file`**
+- **Polling**: hits `GET /api/jobs/:jobId` until `completed` (or `failed`)
+
+Scripts (from `frontend/finsafe/package.json`):
+- `npm run dev`
+- `npm run build`
+- `npm run preview`
+- `npm run lint`
+
+---
+
+## Backend (Express API) Details
+
+### Endpoints
+
+- `GET /api/health`
+- `POST /api/jobs/upload` (multipart form field: `file`)
+- `GET /api/jobs/:jobId` (poll job)
+- `GET /api/jobs/meta/queue` (queue snapshot)
+
+### Upload constraints
+
+- **File type**: CSV only
+- **Size limit**: 5 MB
+- **Storage**: written to `backend/uploads/`, then deleted after job completion/failure
+
+### Job model (polling)
+
+Statuses:
+- `queued`
+- `processing`
+- `completed` (includes `result`)
+- `failed` (includes `error`)
+
+---
+
+## CSV Format (What You Can Upload)
+
+The backend CSV parser is flexible about headers and will try common variants.
+
+### Required fields (per row)
+
+- **Date** (any of): `date`, `transaction_date`, `posted_date`, `timestamp`, ...
+- **Description** (any of): `description`, `merchant`, `memo`, `name`, ...
+- **Amount** (any of): `amount`, `debit`, `value`, ...
+
+### Notes
+
+- Dates must be parseable by JavaScript `Date(...)`
+- Amount supports `$`, `,`, whitespace, and parentheses for negatives (e.g. `($12.34)`)
+- Rows missing a valid date/description/amount are skipped
+
+---
+
+## ML Service (FastAPI) Details
+
+### Endpoints
+
+- `GET /health` → `{ status, models, training_rows }`
+- `POST /predict` → full analysis for a list of transactions
+
+### Request shape
+
+```json
+{
+  "transactions": [
+    { "date": "2026-03-01T14:00:00.000Z", "description": "Walmart groceries", "amount": -93.1 }
+  ]
+}
+```
+
+### Response shape (key fields)
+
+The ML service returns (at minimum) these keys used by the backend:
+- `transactions` (categorized + enriched)
+- `forecast`
+
+Additional keys often returned and used/normalized by the backend:
+- `category_summary` (→ backend `categoryTotals`)
+- `weekly_spend` (→ backend `weeklyActual`)
+- `health_score` (→ backend `healthScore`)
+
+---
+
+## Environment Variables Summary
+
+### `backend/.env`
+
+- `PORT`: backend port (suggest `8080`)
+- `ML_SERVICE_URL`: ML base URL (suggest `http://localhost:8000`)
+- `ML_SERVICE_TIMEOUT_MS`: ML request timeout
+- `CORS_ORIGIN`: allowed origin(s), `*` for dev
+- `API_RATE_LIMIT_*`: request rate limiting
+- `JOB_QUEUE_CONCURRENCY`: parallel job workers (in-memory)
+
+### `frontend/finsafe/.env` (Vite)
+
+- `VITE_API_BASE_URL`: backend base URL for local dev (e.g. `http://localhost:8080`)
+
+---
+
+## Troubleshooting
+
+- **Frontend uploads but polling fails**: ensure `VITE_API_BASE_URL` matches the backend `PORT`.
+- **Jobs fail with ML errors**: ensure ML is running and `backend/.env` has `ML_SERVICE_URL=http://localhost:8000`.
+- **CORS errors**: set `CORS_ORIGIN=*` for local dev (or your Vite dev server origin).
+- **“No valid transactions found in CSV”**: verify your CSV has parseable date/amount + non-empty description.
+
+---
+
+## Security / Git Hygiene
+
+- Do **not** commit real `.env` files (they may contain secrets or local-only values).
+- Prefer `.env.example` files for documenting configuration (backend already includes one).
