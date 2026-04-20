@@ -1,0 +1,69 @@
+<svg width="1400" height="940" viewBox="0 0 1400 940" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #0f1117; }
+      .node { fill: #1a1f2b; stroke: #2a2f3a; stroke-width: 2; rx: 14; ry: 14; }
+      .node2 { fill: #1e293b; stroke: #334155; stroke-width: 2; rx: 14; ry: 14; }
+      .text { fill: #e5e7eb; font-family: Arial, sans-serif; font-size: 18px; font-weight: 600; }
+      .sub { fill: #cbd5e1; font-family: Arial, sans-serif; font-size: 14px; }
+      .edge { stroke: #94a3b8; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .label { fill: #f8fafc; font-family: Arial, sans-serif; font-size: 13px; }
+      .title { fill: #f8fafc; font-family: Arial, sans-serif; font-size: 28px; font-weight: 700; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="940"/>
+  <text class="title" x="700" y="48" text-anchor="middle">FinSafe Architecture</text>
+
+  <rect class="node" x="560" y="80" width="280" height="70"/>
+  <text class="text" x="700" y="122" text-anchor="middle">User Browser</text>
+
+  <rect class="node2" x="470" y="190" width="460" height="96"/>
+  <text class="text" x="700" y="228" text-anchor="middle">Frontend (React + Vite)</text>
+  <text class="sub" x="700" y="254" text-anchor="middle">Upload + Poll + Dashboard</text>
+
+  <rect class="node2" x="470" y="340" width="460" height="80"/>
+  <text class="text" x="700" y="385" text-anchor="middle">Backend API (Node.js + Express)</text>
+
+  <rect class="node" x="130" y="500" width="180" height="64"/><text class="text" x="220" y="539" text-anchor="middle">Jobs Router</text>
+  <rect class="node" x="340" y="500" width="210" height="64"/><text class="text" x="445" y="539" text-anchor="middle">In-Memory Queue</text>
+  <rect class="node" x="580" y="500" width="160" height="64"/><text class="text" x="660" y="539" text-anchor="middle">CSV Parser</text>
+  <rect class="node" x="770" y="500" width="190" height="64"/><text class="text" x="865" y="539" text-anchor="middle">Analysis Service</text>
+  <rect class="node" x="990" y="500" width="150" height="64"/><text class="text" x="1065" y="539" text-anchor="middle">ML Client</text>
+
+  <rect class="node2" x="1010" y="650" width="260" height="76"/>
+  <text class="text" x="1140" y="692" text-anchor="middle">ML Service (FastAPI)</text>
+
+  <rect class="node" x="940" y="780" width="400" height="110"/>
+  <text class="text" x="1140" y="820" text-anchor="middle">ML Models</text>
+  <text class="sub" x="1140" y="846" text-anchor="middle">Categorizer + Anomaly + Risk + Forecast + Health Score</text>
+
+  <rect class="node" x="160" y="780" width="420" height="88"/>
+  <text class="text" x="370" y="820" text-anchor="middle">UI Components</text>
+  <text class="sub" x="370" y="845" text-anchor="middle">Summary, Flags, Charts, Forecast</text>
+
+  <path class="edge" d="M700 150 L700 190"/>
+  <path class="edge" d="M700 286 L700 340"/>
+  <text class="label" x="715" y="318">POST /api/jobs/upload, GET /api/jobs/:jobId</text>
+
+  <path class="edge" d="M700 420 L220 500"/>
+  <path class="edge" d="M220 564 L445 500"/>
+  <path class="edge" d="M445 564 L660 500"/>
+  <path class="edge" d="M660 564 L865 500"/>
+  <path class="edge" d="M865 564 L1065 500"/>
+
+  <path class="edge" d="M1065 564 L1140 650"/>
+  <text class="label" x="1090" y="625">POST /predict</text>
+
+  <path class="edge" d="M1140 726 L1140 780"/>
+  <path class="edge" d="M940 835 L865 564"/>
+  <text class="label" x="892" y="690">Predictions JSON</text>
+
+  <path class="edge" d="M220 564 L700 340"/>
+  <text class="label" x="370" y="430">Job status/result JSON</text>
+
+  <path class="edge" d="M700 286 L370 780"/>
+</svg>
