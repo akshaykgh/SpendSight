@@ -34,6 +34,7 @@ export function Dashboard({ result, jobId, onReset }: Props) {
       totalSpend, totalIncome,
       anomalyCount: result.flaggedTransactions.length,
       fraudCount,
+      healthScore: result.healthScore,
       categoryMap,
     };
   }, [result]);

@@ -5,6 +5,7 @@ interface Stats {
   totalIncome: number;
   anomalyCount: number;
   fraudCount: number;
+  healthScore?: number;
 }
 
 const CARDS = [
@@ -40,18 +41,28 @@ const CARDS = [
     bg: "bg-red-500/10",
     val: "text-red-400",
   },
+  {
+    key: "healthScore",
+    label: "Health Score",
+    icon: "🧠",
+    ring: "border-indigo-500/20",
+    bg: "bg-indigo-500/10",
+    val: "text-indigo-400",
+  },
 ] as const;
 
 export function SummaryCards({ stats }: { stats: Stats }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       {CARDS.map(({ key, label, icon, ring, bg, val }) => (
         <div key={key} className={`rounded-2xl border ${ring} ${bg} p-5`}>
           <span className="text-2xl mb-3 block">{icon}</span>
           <p className={`text-2xl font-bold ${val}`}>
             {key === "totalSpend" || key === "totalIncome"
               ? fmtCurrency(stats[key])
-              : String(stats[key])}
+              : key === "healthScore"
+                ? `${Math.round(stats.healthScore ?? 0)}/100`
+                : String(stats[key])}
           </p>
           <p className="text-gray-500 text-sm mt-1">{label}</p>
         </div>

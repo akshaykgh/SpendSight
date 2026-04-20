@@ -177,7 +177,9 @@ export function TransactionTable({
             <thead className="border-b border-gray-800 text-gray-500 text-xs">
               <tr>
                 <Th label="Date" k="date" {...thProps} />
-                <th className="px-4 py-3 text-left font-medium">Description</th>
+                <th className="px-4 py-3 text-left font-medium min-w-[320px]">
+                  Description
+                </th>
                 <Th label="Category" k="category" {...thProps} />
                 <Th label="Amount" k="amount" {...thProps} />
                 <Th label="Risk" k="merchant_risk" {...thProps} />
@@ -200,7 +202,7 @@ export function TransactionTable({
                       {fmtTime(tx.date)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-white font-medium max-w-[200px]">
+                  <td className="px-4 py-3 text-white font-medium min-w-[320px] max-w-[520px]">
                     <span className="block truncate">{tx.description}</span>
                     {tx.fraud_signal && (
                       <span className="block text-xs text-red-400 mt-0.5 truncate">

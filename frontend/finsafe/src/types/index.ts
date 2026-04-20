@@ -31,6 +31,7 @@ export interface JobResult {
   source: string;
   categorizedTransactions: Transaction[];
   flaggedTransactions: Transaction[];
+  healthScore?: number;
   weeklyActual?: WeeklyActualPoint[];
   forecast?: ForecastPoint[];
 }
